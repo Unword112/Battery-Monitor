@@ -2,11 +2,11 @@
 #include <HTTPClient.h>
 
 // ข้อมูล WiFi และ ThingsBoard
-String ssid = "pok";
-String password = "12345678n";
+String ssid = "YOUR_WIFI_NAME";
+String password = "YOUR_WIFI_PASSWORD";
 
 String tbHost = "thingsboard.cloud";  // เซิร์ฟเวอร์ของ ThingsBoard
-String tbToken = "n5ksm170z9xuwo65mz45"; // Access Token ของ ThingsBoard
+String tbToken = "YOUR_TOKEN"; // Access Token ของ ThingsBoard
 
 int analogInPin  = 34;  
 int sensorValue; 
