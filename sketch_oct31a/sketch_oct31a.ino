@@ -32,7 +32,7 @@ void loop() {
  
   sensorValue = analogRead(analogInPin);
   voltage = (sensorValue * 3.3) / 4095.0;  // สำหรับ ESP32 ที่มีค่า ADC สูงสุด 4095
-  bat_percentage = mapfloat(voltage, 0, 4.5, 0, 100); // แก้ไขที่นี่
+  bat_percentage = mapfloat(voltage, 10, 16.8, 0, 100); // แก้ไขที่นี่
   
   if (bat_percentage >= 100) {
     bat_percentage = 100;
