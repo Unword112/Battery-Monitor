@@ -3,8 +3,8 @@ import requests
 
 app = Flask(__name__)
 
-LINE_ACCESS_TOKEN = '{LINE_ACCESS_TOKEN}'
-ESP32_IP = 'http://192.168.0.xxx'  # IP ของ ESP32 ในเครือข่ายของคุณ
+LINE_ACCESS_TOKEN = '{process.env.ACCESS_TOKEN}'
+ESP32_IP = 'http://127.0.0.1'  # IP ของ ESP32 ในเครือข่ายของคุณ
 
 def reply_message(reply_token, message):
     url = 'https://api.line.me/v2/bot/message/reply'
