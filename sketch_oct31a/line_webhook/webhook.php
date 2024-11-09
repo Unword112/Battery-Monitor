@@ -3,52 +3,79 @@ $input = file_get_contents("php://input");
 error_log("Received data: " . $input);  // บันทึกข้อมูลที่ได้รับจาก Arduino หรือ LINE
 
 $data = json_decode($input, true);
+$batteryFile = 'battery_status.json';
 
-// ตรวจสอบว่า LINE ส่งข้อความ "Battery status" หรือไม่
-session_start();
+$existingData = file_exists($batteryFile) ? json_decode(file_get_contents($batteryFile), true) : [];
+
+
+// ตรวจสอบว่ามีข้อมูลแบตเตอรี่ที่ส่งมาจาก ESP32
 if (isset($data['battery_percentage'])) {
-    $_SESSION['battery_percentage'] = $data['battery_percentage'];
+    $existingData['battery_percentage'] = $data['battery_percentage'];
+    error_log("Battery percentage saved: " . $data['battery_percentage']);
 }
+
+if (isset($data['sensorValue'])) {
+    $existingData['sensorValue'] = $data['sensorValue'];
+    error_log("Sensor value saved: " . $data['sensorValue']);
+}
+
+if (isset($data['voltage'])) {
+    $existingData['voltage'] = $data['voltage'];
+    error_log("Voltage saved: " . $data['voltage']);
+}
+
+file_put_contents($batteryFile, json_encode($existingData, JSON_PRETTY_PRINT));
+echo json_encode(["status" => "success"]);
 
 // เมื่อได้รับข้อความ "Battery status" จาก LINE
 if (isset($data['events'])) {
     foreach ($data['events'] as $event) {
-        if ($event['type'] == 'message' && $event['message']['text'] == 'Battery status') {
-            if (isset($_SESSION['battery_percentage'])) {
-                $batteryLevel = $_SESSION['battery_percentage'];
-                $replyToken = $event['replyToken'];
+        if ($event['type'] == 'message') {
+            $replyToken = $event['replyToken'];
+            $messageText = strtolower($event['message']['text']);
 
-                // ส่งข้อความไปยัง LINE
-                $message = 'Battery Level: ' . $batteryLevel . '%';
+            // อ่านข้อมูลจากไฟล์ JSON
+            $batteryData = file_exists($batteryFile) ? json_decode(file_get_contents($batteryFile), true) : null;
 
-                // ส่งคำตอบกลับไปยัง LINE
-                $headers = [
-                    'Content-Type: application/json',
-                    'Authorization: Bearer YOUR_CHANNEL_ACCESS_TOKEN'
-                ];
-
-                $body = json_encode([
-                    'replyToken' => $replyToken,
-                    'messages' => [['type' => 'text', 'text' => $message]]
-                ]);
-
-                $ch = curl_init('https://api.line.me/v2/bot/message/reply');
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-                $response = curl_exec($ch);
-                curl_close($ch);
-
-                if ($response === false) {
-                    error_log("Error sending response to LINE: " . curl_error($ch));
+            $replyMessage = "";
+            if ($batteryData) {
+                if ($messageText == 'battery status') {
+                    $replyMessage = "Battery Level: " . $batteryData['battery_percentage'] . "%";
+                } elseif ($messageText == 'battery voltage') {
+                    $replyMessage = "Voltage: " . $batteryData['voltage'] . "V";
+                } elseif ($messageText == 'sensor value') {
+                    $replyMessage = "Analog Value: " . $batteryData['sensorValue'];
                 } else {
-                    error_log("Message sent successfully: " . $response);
+                    $replyMessage = "Unknown command.";
                 }
             } else {
-                error_log("No battery percentage available.");
-                echo json_encode(["status" => "error", "message" => "No battery percentage available."]);
+                $replyMessage = "Battery data not available.";
             }
+
+            // ส่งข้อความไปยัง LINE Bot
+            $headers = [
+                'Content-Type: application/json',
+                'Authorization: Bearer LINE_ACESS_TOKEN'
+            ];
+
+            $body = json_encode([
+                'replyToken' => $replyToken,
+                'messages' => [['type' => 'text', 'text' => $replyMessage]]
+            ]);
+
+            $ch = curl_init('https://api.line.me/v2/bot/message/reply');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            $response = curl_exec($ch);
+            
+            if (curl_errno($ch)) {
+                error_log("Error sending response to LINE: " . curl_error($ch));
+            } else {
+                error_log("Message sent successfully: " . $response);
+            }
+            curl_close($ch);
         }
     }
 }

@@ -12,7 +12,7 @@ String tbToken = "n5ksm170z9xuwo65mz45";
 
 // ข้อมูล LINE Messaging API
 String lineToken = "J8C//G7Lmm4gWLytK4f6dPsweAnI24NYSCslov+Qv49XVXuzzb+ZBu31P+sJy/83Zke1uEUK0Pxb4ZwKnsUC63+rOF0VOZTmOuAe76jv38UTy7gLAETTeBO+KHn+kPVC9I22hbp44rQKtvOJEZKxvgdB04t89/1O/w1cDnyilFU=";
-String phpServer = "https://5e06-1-46-74-211.ngrok-free.app/line_webhook/webhook.php";  // URL ของ PHP Server
+String phpServer = "https://4a84-1-46-74-211.ngrok-free.app/line_webhook/webhook.php";  // URL ของ PHP Server
 WebServer server(8080);
 
 // ข้อมูล Battery
@@ -30,7 +30,9 @@ void sendBatteryDataToPHP(float batteryPercentage) {
     http.addHeader("Content-Type", "application/json");
     
     // สร้าง JSON ข้อมูลที่ต้องการส่ง
-    String jsonData = "{\"battery_percentage\": " + String(batteryPercentage) + "}";
+    String jsonData = "{\"sensorValue\": " + String(sensorValue) + 
+                        ", \"voltage\": " + String(voltage) +
+                        ", \"battery_percentage\": " + String(batteryPercentage) + "}";
     
     // ส่งข้อมูลไปยัง PHP server
     int httpResponseCode = http.POST(jsonData);
@@ -96,6 +98,26 @@ void handleWebhook() {
         sendLineMessage(replyToken, "Battery Level: " + String(bat_percentage) + "%");
       }
     }
+
+    if (body.indexOf("\"text\":\"Battery Voltage\"") != -1) {
+      String replyToken;
+      int startIdx = body.indexOf("\"replyToken\":\"") + 14;
+      int endIdx = body.indexOf("\"", startIdx);
+      if (startIdx != -1 && endIdx != -1) {
+        replyToken = body.substring(startIdx, endIdx);
+        sendLineMessage(replyToken, "Voltage: " + String(voltage) + "V");
+      }
+    }
+
+    if (body.indexOf("\"text\":\"Sensor Value\"") != -1) {
+      String replyToken;
+      int startIdx = body.indexOf("\"replyToken\":\"") + 14;
+      int endIdx = body.indexOf("\"", startIdx);
+      if (startIdx != -1 && endIdx != -1) {
+        replyToken = body.substring(startIdx, endIdx);
+        sendLineMessage(replyToken, "Analog Value: " + String(sensorValue));
+      }
+    }
     
     // ส่ง response กลับไปยัง LINE
     server.send(200, "application/json", "{\"status\":\"received\"}");
@@ -105,10 +127,17 @@ void handleWebhook() {
   }
 }
 
+void handleBatteryRequest() {
+  String batteryData = "{\"battery_percentage\": " + String(bat_percentage) + "}";
+  server.send(200, "application/json", batteryData);
+}
 
 void setup() {
   Serial.begin(9600);
   WiFi.begin(ssid, password);
+
+  server.on("/get_battery", HTTP_GET, handleBatteryRequest);
+  server.begin();
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -172,5 +201,5 @@ void loop() {
     sendLineMessage("", lineMessage); // Send to LINE
   }
 
-  delay(60000);  // Delay for 1 minute before sending next update
+  delay(60000); 
 }
